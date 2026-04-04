@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pelosi Algo Trader</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e1e4ed;
+    --dim: #8b8fa3;
+    --green: #00d26a;
+    --red: #ff4757;
+    --blue: #4dabf7;
+    --yellow: #ffd43b;
+    --purple: #b197fc;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'SF Mono', 'Fira Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--blue); }
+  .subtitle { color: var(--dim); font-size: 0.85rem; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .stat-card .label { font-size: 0.75rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    color: var(--dim);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover { background: rgba(255,255,255,0.03); }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .tag-buy { background: rgba(0,210,106,0.15); color: var(--green); }
+  .tag-sell { background: rgba(255,71,87,0.15); color: var(--red); }
+  .tag-skip { background: rgba(139,143,163,0.15); color: var(--dim); }
+  .tag-conflicted { background: rgba(255,212,59,0.15); color: var(--yellow); }
+  .tag-strong_buy { background: rgba(0,210,106,0.3); color: var(--green); }
+  .tag-strong_sell { background: rgba(255,71,87,0.3); color: var(--red); }
+  .alert-box {
+    background: rgba(255,71,87,0.1);
+    border: 1px solid rgba(255,71,87,0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .alert-box h2 { color: var(--red); }
+  .score-bar {
+    display: inline-block;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    width: 60px;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .score-bar .fill {
+    position: absolute;
+    left: 0; top: 0; height: 100%;
+    border-radius: 3px;
+  }
+  .backtest-section { display: none; }
+  .backtest-section.loaded { display: block; }
+  .btn {
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab {
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--border);
+    font-family: inherit;
+  }
+  .tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .bt-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Pelosi Algo Trader</h1>
+<div class="subtitle">Last updated: {{ now }}</div>
+
+<!-- Portfolio Stats -->
+<div class="grid">
+  <div class="stat-card">
+    <div class="label">Total Value</div>
+    <div class="value">${{ "%.2f"|format(summary.total_value) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Cash</div>
+    <div class="value">${{ "%.2f"|format(summary.cash) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Positions</div>
+    <div class="value">{{ summary.num_positions }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Total Return</div>
+    <div class="value {{ 'positive' if summary.total_return_pct >= 0 else 'negative' }}">
+      {{ "%+.1f"|format(summary.total_return_pct) }}%
+    </div>
+  </div>
+</div>
+
+<!-- New Trade Alerts -->
+{% if new_trades %}
+<div class="alert-box">
+  <h2>New Pelosi Trades Detected</h2>
+  <p style="color: var(--dim); margin-bottom: 12px;">{{ new_trades|length }} new trade(s) since last check</p>
+  <table>
+    <tr><th>Action</th><th>Ticker</th><th>Amount</th><th>Date</th><th>Disclosed</th></tr>
+    {% for t in new_trades %}
+    <tr>
+      <td><span class="tag tag-{{ t.action|lower }}">{{ t.action }}</span></td>
+      <td><strong>{{ t.ticker }}</strong></td>
+      <td>${{ "{:,.0f}".format(t.amount_low) }} - ${{ "{:,.0f}".format(t.amount_high) }}</td>
+      <td>{{ t.transaction_date }}</td>
+      <td>{{ t.disclosure_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<!-- Signals Table -->
+<div class="card">
+  <h2>Trade Signals</h2>
+  <table>
+    <tr>
+      <th>#</th><th>Action</th><th>Ticker</th><th>Score</th>
+      <th>Rec</th><th>Amount</th><th>Date</th>
+    </tr>
+    {% for s in ranked[:20] %}
+    <tr>
+      <td style="color: var(--dim);">{{ loop.index }}</td>
+      <td><span class="tag tag-{{ s.action|lower }}">{{ s.action }}</span></td>
+      <td><strong>{{ s.ticker }}</strong>
+        <span style="color: var(--dim); font-size: 0.75rem;">{{ s.asset_description[:25] }}</span>
+      </td>
+      <td>
+        {{ "%.0f"|format(s.score) }}
+        <span class="score-bar">
+          <span class="fill" style="width: {{ s.score }}%;
+            background: {% if s.score >= 80 %}var(--green){% elif s.score >= 60 %}var(--blue){% elif s.score >= 45 %}var(--yellow){% else %}var(--dim){% endif %};
+          "></span>
+        </span>
+      </td>
+      <td>
+        {% set rec = s.recommendation|lower %}
+        {% if s.get('conflicted') %}
+          <span class="tag tag-conflicted">CONFLICTED</span>
+        {% else %}
+          <span class="tag tag-{{ rec }}">{{ s.recommendation }}</span>
+        {% endif %}
+      </td>
+      <td style="font-size: 0.8rem;">${{ "{:,.0f}".format(s.amount_low) }}-${{ "{:,.0f}".format(s.amount_high) }}</td>
+      <td>{{ s.transaction_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Backtest -->
+<div class="card">
+  <h2>Backtest</h2>
+  <p style="color: var(--dim); font-size: 0.85rem; margin-bottom: 12px;">
+    Actual returns from Pelosi's trade dates forward.
+  </p>
+  <button class="btn" id="run-backtest" onclick="runBacktest()">Run Backtest</button>
+
+  <div class="backtest-section" id="backtest-results">
+    <div class="tabs" style="margin-top: 16px;">
+      <button class="tab active" onclick="showTab('buys', this)">Buys</button>
+      <button class="tab" onclick="showTab('sells', this)">Sells</button>
+    </div>
+
+    <div id="bt-buys"></div>
+    <div id="bt-sells" style="display:none;"></div>
+    <div id="bt-benchmark" style="margin-top: 16px;"></div>
+    <div class="bt-summary" id="bt-summary"></div>
+  </div>
+</div>
+
+<!-- Performance History -->
+{% if history %}
+<div class="card">
+  <h2>Performance History</h2>
+  <table>
+    <tr><th>Date</th><th>Total Value</th><th>Return</th><th>Cash</th><th>Positions</th></tr>
+    {% for h in history|reverse %}
+    <tr>
+      <td>{{ h.date }}</td>
+      <td>${{ "%.2f"|format(h.total_value) }}</td>
+      <td class="{{ 'positive' if h.total_return_pct >= 0 else 'negative' }}">
+        {{ "%+.1f"|format(h.total_return_pct) }}%
+      </td>
+      <td>${{ "%.2f"|format(h.cash) }}</td>
+      <td>{{ h.num_positions }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<script>
+function runBacktest() {
+  const btn = document.getElementById('run-backtest');
+  btn.innerHTML = '<span class="spinner"></span>Running...';
+  btn.disabled = true;
+
+  fetch('/api/backtest')
+    .then(r => r.json())
+    .then(data => {
+      const section = document.getElementById('backtest-results');
+      section.classList.add('loaded');
+      btn.style.display = 'none';
+
+      const buys = data.results.filter(r => r.action === 'BUY');
+      const sells = data.results.filter(r => r.action === 'SELL');
+
+      document.getElementById('bt-buys').innerHTML = buildTable(buys, 'buy');
+      document.getElementById('bt-sells').innerHTML = buildTable(sells, 'sell');
+
+      // Benchmark
+      if (data.spy) {
+        const ret = (data.spy.return * 100).toFixed(1);
+        const cls = data.spy.return >= 0 ? 'positive' : 'negative';
+        document.getElementById('bt-benchmark').innerHTML =
+          `<div style="padding: 12px; background: rgba(75,171,247,0.1); border-radius: 6px; border: 1px solid rgba(75,171,247,0.3);">
+            <strong>SPY Benchmark:</strong>
+            <span class="${cls}">${ret}%</span> over ${data.spy.days} days
+            ($${data.spy.entry} &rarr; $${data.spy.current})
+          </div>`;
+      }
+
+      // Summary stats
+      const summaryHtml = [];
+      for (const [label, group] of [['Buy Signals', buys], ['Sell Signals', sells]]) {
+        if (!group.length) continue;
+        const totals = group.filter(r => r.r_total !== null);
+        const wins = totals.filter(r => r.r_total > 0).length;
+        const avg = totals.length ? (totals.reduce((a, r) => a + r.r_total, 0) / totals.length * 100).toFixed(1) : 'N/A';
+        const winRate = totals.length ? Math.round(wins / totals.length * 100) : 0;
+        const cls = parseFloat(avg) >= 0 ? 'positive' : 'negative';
+        summaryHtml.push(`
+          <div class="stat-card">
+            <div class="label">${label} Avg Return</div>
+            <div class="value ${cls}">${avg}%</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">${label} Win Rate</div>
+            <div class="value ${winRate >= 50 ? 'positive' : 'negative'}">${wins}/${totals.length} (${winRate}%)</div>
+          </div>
+        `);
+      }
+      document.getElementById('bt-summary').innerHTML = summaryHtml.join('');
+    })
+    .catch(err => {
+      btn.innerHTML = 'Error — try again';
+      btn.disabled = false;
+      console.error(err);
+    });
+}
+
+function buildTable(rows, type) {
+  if (!rows.length) return '<p style="color: var(--dim);">No signals.</p>';
+  let html = `<table>
+    <tr><th>Ticker</th><th>Date</th><th>Entry</th><th>Now</th><th>5d</th><th>20d</th><th>Total</th><th>Days</th></tr>`;
+  for (const r of rows) {
+    const fmt = (v) => v !== null ? `<span class="${v >= 0 ? 'positive' : 'negative'}">${(v*100).toFixed(1)}%</span>` : '<span style="color:var(--dim)">N/A</span>';
+    html += `<tr>
+      <td><strong>${r.ticker}</strong></td>
+      <td>${r.date}</td>
+      <td>$${r.entry_price.toFixed(2)}</td>
+      <td>$${r.current_price.toFixed(2)}</td>
+      <td>${fmt(r.r5)}</td>
+      <td>${fmt(r.r20)}</td>
+      <td>${fmt(r.r_total)}</td>
+      <td>${r.days}d</td>
+    </tr>`;
+  }
+  html += '</table>';
+  return html;
+}
+
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('bt-buys').style.display = tab === 'buys' ? '' : 'none';
+  document.getElementById('bt-sells').style.display = tab === 'sells' ? '' : 'none';
+}
+</script>
+
+</body>
+</html>
