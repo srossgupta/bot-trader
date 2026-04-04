@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from config import (
     DATA_DIR,
     PERFORMANCE_FILE,
+    SEEN_TRADES_FILE,
     HOLDING_PERIOD_DAYS_MAX,
     MIN_SIGNAL_SCORE,
 )
@@ -36,6 +37,67 @@ from portfolio_manager import (
 
 def ensure_data_dir():
     os.makedirs(DATA_DIR, exist_ok=True)
+
+
+# ── NEW TRADE DETECTION ──────────────────────────────────────────
+
+def _trade_key(trade: dict) -> str:
+    """Unique key for a trade: ticker + date + action + amount."""
+    return f"{trade.get('ticker')}|{trade.get('transaction_date')}|{trade.get('action')}|{trade.get('amount_high', 0)}"
+
+
+def load_seen_trades() -> set:
+    """Load set of previously seen trade keys."""
+    if os.path.exists(SEEN_TRADES_FILE):
+        with open(SEEN_TRADES_FILE) as f:
+            return set(json.load(f))
+    return set()
+
+
+def save_seen_trades(seen: set):
+    """Persist seen trade keys."""
+    ensure_data_dir()
+    with open(SEEN_TRADES_FILE, "w") as f:
+        json.dump(list(seen), f)
+
+
+def detect_new_trades(signals: list[dict]) -> list[dict]:
+    """
+    Compare current signals against previously seen trades.
+    Returns list of new trades not seen before.
+    Updates the seen trades file.
+    """
+    seen = load_seen_trades()
+    new_trades = []
+
+    current_keys = set()
+    for s in signals:
+        key = _trade_key(s)
+        current_keys.add(key)
+        if key not in seen:
+            new_trades.append(s)
+
+    # Update seen trades with current set
+    seen.update(current_keys)
+    save_seen_trades(seen)
+
+    return new_trades
+
+
+def print_new_trade_alert(new_trades: list[dict]):
+    """Print a prominent alert when new Pelosi trades are detected."""
+    if not new_trades:
+        return
+
+    print(f"\n  {'🚨'*3} NEW PELOSI TRADES DETECTED {'🚨'*3}")
+    print(f"  {len(new_trades)} new trade(s) since last check:\n")
+
+    for t in new_trades:
+        amt = f"${t.get('amount_low', 0):,.0f}-${t.get('amount_high', 0):,.0f}"
+        print(f"    {t['action']:<5} {t['ticker']:<7} {amt:<22} {t['transaction_date']}")
+        print(f"          {t.get('asset_description', '')} — disclosed {t.get('disclosure_date', '?')}")
+
+    print()
 
 
 # ── PERFORMANCE TRACKING ──────────────────────────────────────────
@@ -184,6 +246,12 @@ def daily_run(auto_execute: bool = False):
     # 2. Fetch new Pelosi signals
     print("── STEP 1: Fetch Pelosi Trades ──")
     signals = get_pelosi_signals()
+
+    # 2b. Check for new trades since last run
+    new_trades = detect_new_trades(signals)
+    print_new_trade_alert(new_trades)
+    if not new_trades:
+        print("   No new trades since last check.")
 
     # 3. Score and rank signals
     print("\n── STEP 2: Score & Rank Signals ──")
