@@ -12,13 +12,35 @@ Congressional trade-following algo that tracks Nancy Pelosi's stock trades and g
 
 ## Setup
 
+**Requirements:** Python 3.10+
+
 ```bash
+# 1. Clone the repo
+git clone https://github.com/srossgupta/bot-trader.git
+cd bot-trader
+
+# 2. Install dependencies
 pip install -r requirements.txt
 ```
 
-Requires Python 3.10+. Dependencies: `requests`, `beautifulsoup4`.
+## Running the Web Dashboard
 
-## Usage
+The easiest way to use the app — open a browser UI with signals, backtest, and portfolio.
+
+```bash
+python app.py
+```
+
+Then open **http://localhost:5050** in your browser.
+
+The dashboard shows:
+- Portfolio value and return at a glance
+- All Pelosi signals scored and ranked (with conflict detection)
+- New trade alerts when she files a fresh disclosure
+- One-click backtest with actual returns vs SPY benchmark
+- Performance history over time
+
+## Running from the Command Line
 
 ```bash
 # Daily scan — shows buy/sell recommendations
@@ -38,6 +60,16 @@ python run.py --history
 
 # Reset portfolio to starting capital
 python run.py --reset
+```
+
+## Running Daily (Recommended)
+
+Run `python run.py` once a day. It will alert you with a `🚨 NEW PELOSI TRADES DETECTED` banner whenever she files a new disclosure — quiet days will just say "no new trades since last check."
+
+To automate, add a cron job:
+```bash
+# Run every morning at 9am
+0 9 * * * cd /path/to/bot-trader && python run.py >> data/daily.log 2>&1
 ```
 
 ## Configuration
