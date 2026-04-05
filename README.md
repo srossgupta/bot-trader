@@ -2,6 +2,16 @@
 
 Congressional trade-following algo that tracks Nancy Pelosi's stock trades and generates buy/sell signals.
 
+## Polymarket Paper Bot
+
+For the new Polymarket strategy bot (paper trading, backtesting, adaptive tuning), see `POLYMARKET_BOT.md` and run:
+
+```bash
+python run_polymarket.py --backtest
+python run_polymarket.py --paper-once
+python run_polymarket.py --run-loop
+```
+
 ## How It Works
 
 1. Scrapes Pelosi family trade disclosures from [CapitolTrades](https://www.capitoltrades.com)
