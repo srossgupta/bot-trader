@@ -63,14 +63,16 @@ VALID_OUTCOMES = {"WIN", "LOSS", "FLAT"}
 # "Semiconductors/AI Infrastructure" and "AI Cloud Infrastructure" are the same
 # bet; matched in order, first hit wins.
 SECTOR_BUCKETS: list[tuple[str, tuple[str, ...]]] = [
+    # Healthcare/Biotech must precede AI/Semis/Tech: "biotech" contains "tech".
+    ("Healthcare/Biotech", ("biotech", "pharma", "health", "medical", "glp-1", "device")),
+    # Financials must precede AI/Semis/Tech: "fintech" contains "tech".
+    ("Financials", ("bank", "fintech", "brokerage", "insur", "financ", "payment", "crypto")),
     ("AI/Semis/Tech", (
         "semiconductor", "semis", "ai", "cloud", "software", "saas", "data center",
         "datacenter", "neocloud", "cdn", "edge", "quantum", "cyber", "internet",
         "tech", "hardware", "server", "memory", "chip",
     )),
     ("Aerospace/Defense", ("aerospace", "defense", "space", "drone", "evtol", "satellite")),
-    ("Healthcare/Biotech", ("biotech", "pharma", "health", "medical", "glp-1", "device")),
-    ("Financials", ("bank", "fintech", "brokerage", "insur", "financ", "payment", "crypto")),
     ("Energy/Materials", ("energy", "oil", "gas", "solar", "uranium", "nuclear",
                           "mining", "materials", "metals", "utilit")),
     ("Consumer/Retail", ("consumer", "retail", "restaurant", "apparel", "auto",
